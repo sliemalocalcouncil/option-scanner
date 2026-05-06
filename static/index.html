@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OPTIONS SCANNER · Polygon 15m</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">◆</span>
+      <span class="title">OPTIONS<span class="dim">·</span>SCANNER</span>
+      <span class="badge">POLYGON STARTER · 15m DELAYED</span>
+    </div>
+    <div class="status" id="status">대기</div>
+  </header>
+
+  <section class="controls">
+    <form id="searchForm">
+      <label>UL <input id="ul" name="ul" placeholder="AAPL" autocomplete="off" required /></label>
+      <label>TYPE
+        <select id="contract_type" name="contract_type">
+          <option value="">all</option>
+          <option value="call">call</option>
+          <option value="put">put</option>
+        </select>
+      </label>
+      <label>EXP <input id="expiration_date" name="expiration_date" placeholder="YYYY-MM-DD" /></label>
+      <label>DTE min <input id="min_dte" name="min_dte" type="number" min="0" placeholder="0" /></label>
+      <label>DTE max <input id="max_dte" name="max_dte" type="number" min="0" placeholder="60" /></label>
+      <label>|Δ| min <input id="delta_min" name="delta_min" type="number" step="0.01" placeholder="0.10" /></label>
+      <label>|Δ| max <input id="delta_max" name="delta_max" type="number" step="0.01" placeholder="0.45" /></label>
+      <label>±strike% <input id="max_strike_distance_pct" name="max_strike_distance_pct" type="number" step="0.5" placeholder="10" /></label>
+      <label>min OI <input id="min_open_interest" name="min_open_interest" type="number" placeholder="100" /></label>
+      <label>min Vol <input id="min_volume" name="min_volume" type="number" placeholder="50" /></label>
+      <button type="submit">SCAN</button>
+    </form>
+  </section>
+
+  <main class="grid">
+    <section class="panel" id="panelChain">
+      <h2>옵션 체인 <span id="ulPrice" class="dim"></span></h2>
+      <div class="tablewrap">
+        <table id="chainTable">
+          <thead>
+            <tr>
+              <th>티커</th><th>type</th><th>strike</th><th>exp</th><th>DTE</th>
+              <th>IV</th><th>Δ</th><th>Γ</th><th>Θ</th><th>ν</th>
+              <th>OI</th><th>Vol</th><th>last</th>
+              <th>RV</th><th>RO</th><th>RIV</th><th>SCORE</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel" id="panelCards">
+      <h2>추천 옵션</h2>
+      <div id="cards" class="cards"></div>
+    </section>
+
+    <section class="panel">
+      <h2>옵션 프리미엄 차트 <span id="optTickerLabel" class="dim"></span></h2>
+      <canvas id="optChart" height="180"></canvas>
+    </section>
+
+    <section class="panel">
+      <h2>기초주식 차트 <span id="ulLabel" class="dim"></span></h2>
+      <canvas id="ulChart" height="180"></canvas>
+    </section>
+
+    <section class="panel">
+      <h2>신호 (15분 지연)</h2>
+      <ul id="signals" class="signals"></ul>
+    </section>
+  </main>
+
+  <footer>
+    <span>본 도구는 분석·교육 목적이며 매매 권유가 아닙니다. 데이터는 Polygon 기준 15분 지연.</span>
+  </footer>
+
+  <script src="/app.js"></script>
+</body>
+</html>

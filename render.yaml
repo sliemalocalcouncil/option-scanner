@@ -1,0 +1,25 @@
+databases:
+  - name: options-scanner-db
+    plan: free
+    databaseName: options_scanner
+    user: scanner
+
+services:
+  - type: web
+    name: options-scanner
+    runtime: python
+    plan: free
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    autoDeploy: true
+    envVars:
+      - key: POLYGON_API_KEY
+        sync: false                       # Render 대시보드에서 직접 입력
+      - key: DATABASE_URL
+        fromDatabase:
+          name: options-scanner-db
+          property: connectionString
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      - key: TZ
+        value: "America/New_York"
