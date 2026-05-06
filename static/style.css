@@ -95,6 +95,8 @@ button:active { transform: translateY(0); }
 .panel h2 .dim { color: var(--fg-dim); font-weight: 500; margin-left: 8px; font-size: 11px; }
 #panelChain { grid-column: 1 / -1; }
 #panelCards { grid-column: 1 / -1; }
+#panelSentiment { grid-column: 1 / -1; }
+#panelUOA { grid-column: 1 / -1; }
 
 /* Chart.js 캔버스가 무한 확장되지 않도록 고정 높이 wrapper */
 .chart-wrap {
@@ -105,6 +107,84 @@ button:active { transform: translateY(0); }
 .chart-wrap canvas {
   width: 100% !important;
   height: 100% !important;
+}
+
+/* ---------- SENTIMENT SCORECARD ---------- */
+.sentiment-empty { color: var(--fg-dim); padding: 20px 0; }
+.sentiment-grid {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 24px;
+  align-items: start;
+}
+.sentiment-hero {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 18px;
+  background: var(--bg-3);
+}
+.sentiment-hero .label {
+  font-family: var(--display);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: .14em;
+  margin: 0 0 4px;
+}
+.sentiment-hero .score {
+  font-family: var(--mono);
+  font-size: 56px;
+  font-weight: 700;
+  line-height: 1;
+  margin: 8px 0 12px;
+}
+.sentiment-hero .meta { color: var(--fg-dim); font-size: 11px; line-height: 1.6; }
+.sentiment-hero.bull { border-color: rgba(87,242,135,.5); box-shadow: inset 0 0 24px rgba(87,242,135,.08); }
+.sentiment-hero.bull .score, .sentiment-hero.bull .label { color: var(--pos); }
+.sentiment-hero.bear { border-color: rgba(255,92,122,.5); box-shadow: inset 0 0 24px rgba(255,92,122,.08); }
+.sentiment-hero.bear .score, .sentiment-hero.bear .label { color: var(--neg); }
+.sentiment-hero.neut .score, .sentiment-hero.neut .label { color: var(--warn); }
+
+.sentiment-bars { display: flex; flex-direction: column; gap: 14px; }
+.sentiment-section h3 {
+  font-family: var(--display);
+  font-size: 11px; letter-spacing: .16em; text-transform: uppercase;
+  color: var(--fg-dim); margin: 0 0 8px;
+  display: flex; justify-content: space-between;
+}
+.sentiment-section h3 .agg { color: var(--fg); font-family: var(--mono); }
+
+.bar-row {
+  display: grid;
+  grid-template-columns: 110px 1fr 64px;
+  align-items: center;
+  gap: 10px;
+  font-size: 11px;
+  padding: 4px 0;
+}
+.bar-row .name { color: var(--fg-dim); letter-spacing: .08em; text-transform: uppercase; }
+.bar-row .val { font-family: var(--mono); text-align: right; }
+.bar-track {
+  position: relative; height: 8px; background: var(--bg-3);
+  border: 1px solid var(--line); border-radius: 4px; overflow: hidden;
+}
+.bar-track::before {
+  content: ""; position: absolute; left: 50%; top: 0; bottom: 0;
+  width: 1px; background: #2a3346;
+}
+.bar-fill {
+  position: absolute; top: 0; bottom: 0;
+  background: var(--pos); border-radius: 2px;
+  transition: width .25s, left .25s;
+}
+.bar-fill.neg { background: var(--neg); }
+.bar-fill.na { background: var(--fg-dim); opacity: .4; }
+
+/* ---------- UOA TABLE ---------- */
+#uoaTable td.score-cell { font-weight: 700; }
+.score-bar {
+  display: inline-block; height: 6px; border-radius: 3px;
+  background: linear-gradient(90deg, var(--accent-2), var(--accent));
+  vertical-align: middle; margin-right: 6px;
 }
 
 /* ---------- TABLE ---------- */

@@ -9,6 +9,8 @@ from .db import get_db
 from .indicators import attach_indicators
 from .polygon import Polygon, PolygonError
 from .ranker import detect_signals, filter_chain, normalize, rank
+from .sentiment import combined_sentiment
+from .uoa import detect_uoa
 
 router = APIRouter(prefix="/api", tags=["options"])
 poly = Polygon()
@@ -206,6 +208,89 @@ async def stock_bars(
     except PolygonError as e:
         raise HTTPException(502, str(e))
     return attach_indicators(bars) | {"ticker": ticker.upper()}
+
+
+# ---- Bull/Bear Sentiment (옵션 + 주식 종합) ----
+@router.get("/sentiment")
+async def get_sentiment(
+    ul: str,
+    expiration_date: Optional[str] = None,
+    max_strike_distance_pct: float = Query(15.0, description="±n% 이내 계약만 포함"),
+    days: int = Query(120, description="주식 일봉 lookback"),
+):
+    """단일 UL의 Bull/Bear 종합 점수."""
+    try:
+        # 옵션 스냅샷 (한 번만 호출)
+        raw = await poly.snapshot_chain(
+            ul, expiration_date=expiration_date, limit=250,
+        )
+        # 주식 일봉
+        to = date.today()
+        from_ = to - timedelta(days=days)
+        stock_bars = await poly.option_aggs(
+            ul.upper(), multiplier=1, timespan="day",
+            from_=from_.isoformat(), to=to.isoformat(),
+        )
+    except PolygonError as e:
+        raise HTTPException(502, str(e))
+
+    rows = [normalize(x) for x in raw]
+    rows = filter_chain(rows, max_strike_distance_pct=max_strike_distance_pct)
+
+    result = combined_sentiment(rows, stock_bars)
+    return {
+        "underlying": ul.upper(),
+        "delayed_minutes": 15,
+        "n_contracts_used": len(rows),
+        **result,
+    }
+
+
+# ---- Unusual Option Activity ----
+@router.get("/uoa")
+async def get_uoa(
+    ul: str,
+    min_vol_oi: float = Query(1.0, description="Vol/OI 비율 하한"),
+    min_volume: float = Query(50.0),
+    history_days: int = Query(20, ge=5, le=60),
+    top_n_for_zscore: int = Query(15, ge=1, le=50,
+        description="z-score 계산 대상 (거래량 상위 N)"),
+    db: Session = Depends(get_db),
+):
+    """단일 UL의 UOA 후보 탐지."""
+    try:
+        raw = await poly.snapshot_chain(ul, limit=250)
+    except PolygonError as e:
+        raise HTTPException(502, str(e))
+
+    rows = [normalize(x) for x in raw]
+    results = await detect_uoa(
+        rows, poly, db,
+        min_vol_oi=min_vol_oi,
+        min_volume=min_volume,
+        history_days=history_days,
+        top_n_for_zscore=top_n_for_zscore,
+    )
+
+    # 신호 테이블에도 저장 (UI에서 시계열로 보고 싶을 때 활용)
+    for r in results[:20]:
+        db.add(models.OptionSignal(
+            ticker=r["ticker"],
+            underlying_ticker=ul.upper(),
+            kind="uoa",
+            score=r["uoa_score"],
+            note=f"VolOI={r['vol_oi_ratio']:.2f} z={r['z_score']}",
+            payload={k: r[k] for k in ("vol_oi_ratio", "z_score", "oi_jump",
+                                       "volume", "open_interest", "delta", "iv")},
+        ))
+    db.commit()
+
+    return {
+        "underlying": ul.upper(),
+        "delayed_minutes": 15,
+        "count": len(results),
+        "results": results,
+    }
 
 
 # ---- [5] 신호 조회 ----

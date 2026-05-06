@@ -57,6 +57,141 @@ function fillChart(chart, bars) {
   chart.update();
 }
 
+/* ---------- sentiment scorecard ---------- */
+function classifyClass(score) {
+  if (score === null || score === undefined) return "neut";
+  if (score >= 15) return "bull";
+  if (score <= -15) return "bear";
+  return "neut";
+}
+
+function barRow(name, score, valueText) {
+  // -100 ~ +100 점수를 0~50% (음수) 또는 50~100% (양수) bar 로 변환
+  let html;
+  if (score === null || score === undefined || Number.isNaN(score)) {
+    html = `<div class="bar-fill na" style="left:49%; width:2%"></div>`;
+  } else {
+    const s = Math.max(-100, Math.min(100, score));
+    if (s >= 0) {
+      const w = (s / 100) * 50;
+      html = `<div class="bar-fill" style="left:50%; width:${w}%"></div>`;
+    } else {
+      const w = (-s / 100) * 50;
+      const left = 50 - w;
+      html = `<div class="bar-fill neg" style="left:${left}%; width:${w}%"></div>`;
+    }
+  }
+  return `
+    <div class="bar-row">
+      <span class="name">${name}</span>
+      <div class="bar-track">${html}</div>
+      <span class="val">${valueText}</span>
+    </div>`;
+}
+
+function renderSentiment(data) {
+  const body = document.querySelector("#sentimentBody");
+  const overall = data.overall_score;
+  const cls = classifyClass(overall);
+
+  const opt = data.option;
+  const stk = data.stock;
+
+  const optComp = opt.components || {};
+  const stkComp = stk.components || {};
+
+  const fmtSig = (v, d = 2) => v == null ? "—" : Number(v).toFixed(d);
+
+  const optRows = [
+    barRow("P/C VOL",    optComp.pc_volume?.score,
+           fmtSig(optComp.pc_volume?.ratio, 2)),
+    barRow("P/C OI",     optComp.pc_oi?.score,
+           fmtSig(optComp.pc_oi?.ratio, 2)),
+    barRow("IV SKEW",    optComp.iv_skew?.score,
+           optComp.iv_skew?.skew == null
+             ? "—"
+             : (optComp.iv_skew.skew * 100).toFixed(2) + "%"),
+    barRow("ΔW · OI",    optComp.dw_oi?.score,
+           fmtSig(optComp.dw_oi?.net, 0)),
+    barRow("ΔW · VOL",   optComp.dw_volume?.score,
+           fmtSig(optComp.dw_volume?.net, 0)),
+  ].join("");
+
+  const stkRows = [
+    barRow("MA POSITION", stkComp.ma_position?.score,
+           fmtSig(stkComp.ma_position?.last, 2)),
+    barRow("RSI 14",      stkComp.rsi_zone?.score,
+           fmtSig(stkComp.rsi_zone?.rsi, 1)),
+    barRow("MACD HIST",   stkComp.macd_hist?.score,
+           fmtSig(stkComp.macd_hist?.hist, 4)),
+    barRow("MOMENTUM 5D", stkComp.momentum_5d?.score,
+           stkComp.momentum_5d?.ret_5d == null
+             ? "—"
+             : (stkComp.momentum_5d.ret_5d * 100).toFixed(2) + "%"),
+  ].join("");
+
+  body.classList.remove("sentiment-empty");
+  body.innerHTML = `
+    <div class="sentiment-grid">
+      <div class="sentiment-hero ${cls}">
+        <div class="label">${data.label}</div>
+        <div class="score">${overall == null ? "—" : (overall >= 0 ? "+" : "") + overall.toFixed(0)}</div>
+        <div class="meta">
+          ${data.underlying} · ${data.n_contracts_used ?? 0} 계약 · 15m 지연<br/>
+          option ${opt.score == null ? "—" : opt.score.toFixed(0)} ×0.6 +
+          stock ${stk.score == null ? "—" : stk.score.toFixed(0)} ×0.4
+        </div>
+      </div>
+
+      <div class="sentiment-bars">
+        <div class="sentiment-section">
+          <h3>OPTION SIGNALS <span class="agg">${opt.score == null ? "—" : opt.score.toFixed(1)}</span></h3>
+          ${optRows}
+        </div>
+        <div class="sentiment-section">
+          <h3>STOCK SIGNALS <span class="agg">${stk.score == null ? "—" : stk.score.toFixed(1)}</span></h3>
+          ${stkRows}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderUOA(data) {
+  const tbody = document.querySelector("#uoaTable tbody");
+  tbody.innerHTML = "";
+  if (!data.results || !data.results.length) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td colspan="11" style="text-align:left; color: var(--fg-dim);">
+      현재 기준치를 만족하는 UOA 후보가 없습니다.</td>`;
+    tbody.appendChild(tr);
+    return;
+  }
+  data.results.slice(0, 30).forEach((r) => {
+    const tr = document.createElement("tr");
+    const score = r.uoa_score || 0;
+    const barW = Math.max(0, Math.min(100, score)) * 0.7;
+    tr.innerHTML = `
+      <td class="tk">${r.ticker}</td>
+      <td class="${r.contract_type}">${(r.contract_type || "").toUpperCase()}</td>
+      <td>${fmt(r.strike, 2)}</td>
+      <td>${r.expiration_date || "—"}</td>
+      <td>${r.dte ?? "—"}</td>
+      <td>${fmtInt(r.volume)}</td>
+      <td>${fmtInt(r.open_interest)}</td>
+      <td>${fmt(r.vol_oi_ratio, 2)}</td>
+      <td>${fmt(r.z_score, 1)}</td>
+      <td>${r.oi_jump?.pct == null ? "—" : r.oi_jump.pct.toFixed(0) + "%"}</td>
+      <td class="score-cell">
+        <span class="score-bar" style="width:${barW}px"></span>${fmt(score, 0)}
+      </td>
+    `;
+    tr.style.cursor = "pointer";
+    tr.addEventListener("click", () => selectOption(r.ticker));
+    tbody.appendChild(tr);
+  });
+}
+
 /* ---------- chain table ---------- */
 function renderChain(data) {
   const ul = data.underlying_price;
@@ -166,11 +301,15 @@ async function scan(form) {
     );
     params.ul = ul;
 
-    const [chain, ulBars] = await Promise.all([
+    const [chain, ulBars, sentiment, uoa] = await Promise.all([
       api("/api/chain", params),
       api("/api/stock_bars", { ticker: ul, days: 120 }),
+      api("/api/sentiment", { ul, max_strike_distance_pct: 15, days: 120 }),
+      api("/api/uoa", { ul, min_vol_oi: 1.0, min_volume: 50 }),
     ]);
 
+    renderSentiment(sentiment);
+    renderUOA(uoa);
     renderChain(chain);
     renderCards(chain);
     renderSignals(chain.signals);

@@ -43,6 +43,28 @@
   </section>
 
   <main class="grid">
+    <!-- 상단 종합 카드 + UOA 패널 -->
+    <section class="panel sentiment-panel" id="panelSentiment">
+      <h2>BULL / BEAR · 종합 점수</h2>
+      <div id="sentimentBody" class="sentiment-empty">티커를 입력하고 SCAN.</div>
+    </section>
+
+    <section class="panel" id="panelUOA">
+      <h2>Unusual Option Activity</h2>
+      <div class="tablewrap" style="max-height: 360px;">
+        <table id="uoaTable">
+          <thead>
+            <tr>
+              <th>티커</th><th>type</th><th>strike</th><th>exp</th><th>DTE</th>
+              <th>Vol</th><th>OI</th><th>Vol/OI</th><th>z</th><th>ΔOI%</th>
+              <th>SCORE</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
     <section class="panel" id="panelChain">
       <h2>옵션 체인 <span id="ulPrice" class="dim"></span></h2>
       <div class="tablewrap">
